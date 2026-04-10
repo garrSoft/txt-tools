@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FILE="${1:-}"
+START="${2:-}"
+END="${3:-}"
+LABEL="${4:-}"
+TARGET="${5:-}"
+
+if [[ -z "$FILE" || -z "$START" || -z "$END" || -z "$LABEL" ]]; then
+  echo "Usage: mark_block <file> <start_line> <end_line> <label> [target]" >&2
+  exit 1
+fi
+
+if [[ ! -f "$FILE" ]]; then
+  echo "File not found: $FILE" >&2
+  exit 1
+fi
+
+if ! [[ "$START" =~ ^[0-9]+$ && "$END" =~ ^[0-9]+$ ]]; then
+  echo "start/end must be line numbers" >&2
+  exit 1
+fi
+
+if grep -q "EXTRACT_CANDIDATE_BEGIN: $LABEL" "$FILE"; then
+  echo "Label already exists: $LABEL" >&2
+  exit 1
+fi
+
+case "$FILE" in
+  *.js|*.ts|*.tsx|*.jsx|*.c|*.cpp|*.h|*.hpp|*.java|*.go|*.rs) P="//" ;;
+  *.sh|*.bash|*.zsh|*.py|*.rb|*.yml|*.yaml|*.env|*.conf|Dockerfile) P="#" ;;
+  *.md|*.html|*.xml) P="<!--"; S=" -->" ;;
+  *) P="#" ;;
+esac
+
+S="${S:-}"
+
+BEGIN="$P EXTRACT_CANDIDATE_BEGIN: $LABEL$S"
+ENDM="$P EXTRACT_CANDIDATE_END: $LABEL$S"
+
+if [[ -n "${TARGET:-}" ]]; then
+  TARGET_LINE="$P EXTRACT_TARGET: $TARGET$S"
+else
+  TARGET_LINE=""
+fi
+
+TMP="$(mktemp)"
+
+awk -v s="$START" -v e="$END" \
+    -v b="$BEGIN" \
+    -v t="$TARGET_LINE" \
+    -v em="$ENDM" '
+NR==s {
+  print b
+  if (length(t)>0) print t
+}
+{ print }
+NR==e { print em }
+' "$FILE" > "$TMP"
+
+MODE="$(stat -c '%a' "$FILE" 2>/dev/null || echo 755)"
+mv "$TMP" "$FILE"
+chmod "$MODE" "$FILE"
+
+echo
+echo "=== verify ==="
+sed -n "$((START>3?START-3:1)),$((END+5))p" "$FILE"
+
+echo
+echo "=== markers ==="
+grep -n "EXTRACT_" "$FILE" || true

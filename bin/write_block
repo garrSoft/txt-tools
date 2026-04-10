@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="${1:-}"
+FILE="${2:-}"
+
+if [[ -z "$MODE" || -z "$FILE" ]]; then
+  echo "Usage: write_block <mode> <file> [pattern] [--commit] [--push] [-p perms]" >&2
+  exit 1
+fi
+
+shift 2
+
+PATTERN=""
+DO_COMMIT=0
+DO_PUSH=0
+FORCE_PERMS=""
+
+if [[ "$MODE" == "insert-after" || "$MODE" == "insert-before" ]]; then
+  if [[ $# -eq 0 ]]; then
+    echo "$MODE requires a pattern" >&2
+    exit 1
+  fi
+  PATTERN="$1"
+  shift
+fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --commit) DO_COMMIT=1 ;;
+    --push)   DO_PUSH=1 ;;
+    -p)
+      FORCE_PERMS="$2"
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+mkdir -p "$(dirname "$FILE")"
+
+IS_NEW=0
+if ! git ls-files --error-unmatch "$FILE" >/dev/null 2>&1; then
+  if [[ ! -e "$FILE" ]]; then
+    IS_NEW=1
+  fi
+fi
+
+EXISTING_MODE=""
+if [[ -e "$FILE" ]]; then
+  EXISTING_MODE="$(stat -c '%a' "$FILE")"
+fi
+
+TMP="$(mktemp)"
+cat > "$TMP"
+
+case "$MODE" in
+  write)
+    mv "$TMP" "$FILE"
+    ;;
+  append)
+    cat "$TMP" >> "$FILE"
+    rm "$TMP"
+    ;;
+  insert-after)
+    awk -v pat="$PATTERN" -v insert_file="$TMP" '
+      {
+        print
+        if ($0 ~ pat) {
+          while ((getline line < insert_file) > 0) print line
+          close(insert_file)
+          insert_file = ""
+        }
+      }
+    ' "$FILE" > "$FILE.tmp"
+    mv "$FILE.tmp" "$FILE"
+    rm "$TMP"
+    ;;
+  insert-before)
+    awk -v pat="$PATTERN" -v insert_file="$TMP" '
+      {
+        if ($0 ~ pat) {
+          while ((getline line < insert_file) > 0) print line
+          close(insert_file)
+          insert_file = ""
+        }
+        print
+      }
+    ' "$FILE" > "$FILE.tmp"
+    mv "$FILE.tmp" "$FILE"
+    rm "$TMP"
+    ;;
+  *)
+    echo "Invalid mode: $MODE" >&2
+    rm -f "$TMP"
+    exit 1
+    ;;
+esac
+
+if [[ -n "$FORCE_PERMS" ]]; then
+  chmod "$FORCE_PERMS" "$FILE"
+elif [[ -n "$EXISTING_MODE" ]]; then
+  chmod "$EXISTING_MODE" "$FILE"
+fi
+
+echo
+echo "=== verify: $FILE ==="
+sed -n '1,200p' "$FILE"
+
+echo
+echo "=== diff ==="
+git --no-pager diff -- "$FILE" 2>/dev/null || true
+
+echo
+echo "=== status ==="
+git status --short 2>/dev/null || true
+
+if [[ "$DO_COMMIT" -eq 1 ]]; then
+  git add "$FILE"
+
+  if [[ "$IS_NEW" -eq 1 ]]; then
+    MSG="docs: add $(basename "$FILE")"
+  else
+    MSG="docs: edit $(basename "$FILE")"
+  fi
+
+  echo
+  echo "=== commit ==="
+  echo "$MSG"
+  git commit -m "$MSG"
+
+  if [[ "$DO_PUSH" -eq 1 ]]; then
+    echo
+    echo "=== push ==="
+    git push
+  fi
+fi
