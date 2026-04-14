@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$HOME/dev/txt-tools"
+
+echo "== txt-tools dev (guard mode) =="
+
+echo "[1/4] install"
+"$ROOT/install.sh"
+
+echo "[2/4] runtime check"
+RUNTIME_WRITE="$(which write_block || true)"
+RUNTIME_UPDATE="$(which tools-update || true)"
+
+echo "write_block → $RUNTIME_WRITE"
+echo "tools-update → $RUNTIME_UPDATE"
+
+echo "[3/4] repo vs runtime check"
+
+REPO_WRITE="$ROOT/bin/write_block"
+
+if [[ -f "$RUNTIME_WRITE" ]]; then
+  if ! diff "$REPO_WRITE" "$RUNTIME_WRITE" >/dev/null 2>&1; then
+    echo "WARNING: write_block repo ≠ runtime (install mismatch or drift)"
+  else
+    echo "write_block OK (repo == runtime)"
+  fi
+fi
+
+echo "[4/4] smoke test"
+
+if echo "" | write_block write /tmp/tools_dev_smoke.txt 2>/dev/null; then
+  echo "ERROR: write_block should have blocked empty input"
+  exit 1
+else
+  echo "write_block safety OK"
+fi
+
+echo "== done =="

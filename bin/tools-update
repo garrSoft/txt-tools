@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+echo "== txt-tools update =="
+
+cd "$ROOT"
+
+echo "[1/3] pulling latest changes..."
+git pull --rebase
+
+echo "[2/3] running install..."
+"$ROOT/install.sh"
+
+echo "[3/3] verifying..."
+echo "write_block → $(which write_block)"
+
+echo "== done =="
