@@ -14,3 +14,10 @@ for f in "$SRC_DIR"/*; do
 done
 
 echo "done → $DEST_DIR"
+
+echo
+
+if [[ ":$PATH:" != *":$DEST_DIR:"* ]]; then
+  echo "WARNING: $DEST_DIR is not in PATH"
+  echo "Tools installed but may not be callable by name."
+fi

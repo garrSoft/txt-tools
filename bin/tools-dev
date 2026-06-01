@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$HOME/dev/txt-tools"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "== txt-tools dev (guard mode) =="
 
