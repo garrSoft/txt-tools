@@ -1,0 +1,22 @@
+{
+  "TCP": {
+    "443": {
+      "HTTPS": true
+    }
+  },
+  "Web": {
+    "dev-server.tail024ad2.ts.net:443": {
+      "Handlers": {
+        "/admin": {
+          "Proxy": "http://127.0.0.1:3003"
+        },
+        "/api": {
+          "Proxy": "http://127.0.0.1:4001"
+        },
+        "/field": {
+          "Proxy": "http://127.0.0.1:3101"
+        }
+      }
+    }
+  }
+}

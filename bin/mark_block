@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FILE="${1:-}"
-START="${2:-}"
-END="${3:-}"
-LABEL="${4:-}"
-TARGET="${5:-}"
+MODE="${1:-}"
+FILE="${2:-}"
+START="${3:-}"
+END="${4:-}"
+LABEL="${5:-}"
+TARGET="${6:-}"
+
+if [[ "$MODE" == "list" ]]; then
+  if [[ -z "$FILE" ]]; then
+    echo "Usage: mark_block list <file>" >&2
+    exit 1
+  fi
+  if [[ ! -f "$FILE" ]]; then
+    echo "File not found: $FILE" >&2
+    exit 1
+  fi
+  grep -n "EXTRACT_" "$FILE" || true
+  exit 0
+fi
+
+if [[ "$MODE" != "mark" ]]; then
+  echo "Usage: mark_block <mark|list> <file> [start_line end_line label target]" >&2
+  exit 1
+fi
 
 if [[ -z "$FILE" || -z "$START" || -z "$END" || -z "$LABEL" ]]; then
-  echo "Usage: mark_block <file> <start_line> <end_line> <label> [target]" >&2
+  echo "Usage: mark_block mark <file> <start_line> <end_line> <label> [target]" >&2
   exit 1
 fi
 

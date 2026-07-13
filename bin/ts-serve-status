@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOSTNAME_SHORT="$(hostname -s)"
+STORE_DIR="${HOME}/dev/txt-tools/data/tailscale-serve/${HOSTNAME_SHORT}"
+
+mkdir -p "$STORE_DIR"
+
+echo "=== tailscale serve status ==="
+tailscale serve status
+echo
+echo "=== tailscale serve status (json) ==="
+tailscale serve status --json

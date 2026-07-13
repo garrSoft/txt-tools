@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: ts-serve-apply <preset-name-or-json-path>" >&2
+  exit 1
+fi
+
+ARG="$1"
+HOSTNAME_SHORT="$(hostname -s)"
+STORE_DIR="${HOME}/dev/txt-tools/data/tailscale-serve/${HOSTNAME_SHORT}"
+
+if [[ -f "$ARG" ]]; then
+  CONFIG_FILE="$ARG"
+else
+  CONFIG_FILE="${STORE_DIR}/${ARG}.json"
+fi
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  echo "ERROR: config not found: $CONFIG_FILE" >&2
+  exit 1
+fi
+
+echo "applying: $CONFIG_FILE"
+tailscale serve set-config "$CONFIG_FILE"
+echo
+tailscale serve status

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: ts-serve-save <preset-name>" >&2
+  exit 1
+fi
+
+PRESET_NAME="$1"
+HOSTNAME_SHORT="$(hostname -s)"
+STORE_DIR="${HOME}/dev/txt-tools/data/tailscale-serve/${HOSTNAME_SHORT}"
+TARGET_FILE="${STORE_DIR}/${PRESET_NAME}.json"
+
+mkdir -p "$STORE_DIR"
+
+tailscale serve status --json > "$TARGET_FILE"
+
+echo "saved: $TARGET_FILE"
+echo
+sed -n '1,200p' "$TARGET_FILE"
